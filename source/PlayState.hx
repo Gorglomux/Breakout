@@ -13,13 +13,13 @@ class PlayState extends FlxState
 	var _bar:FlxSprite;
 	var _ball:FlxSprite;
 	var _walls:FlxGroup;
-	var _bricks:FlxGroup;
+	var _bricks:FlxTypedGroup<FlxSprite>;
 	var gameOver:Bool=false;
 	var win:Bool=false;
 	var gameOverText:FlxText;
 	override public function create():Void
 	{
-		_bricks = new FlxGroup();
+		 _bricks= new FlxTypedGroup<FlxSprite>();
 		var file= "assets/data/level"+level;
 		var content:String = "";
 		if(sys.FileSystem.exists(file)){
@@ -38,8 +38,8 @@ class PlayState extends FlxState
 		_bar.makeGraphic(BAR_WIDTH,BAR_HEIGHT,FlxColor.WHITE);
 		_bar.immovable=true;
 
-		_ball = new FlxSprite(_bar.x+BAR_WIDTH/2,_bar.y-5);
-		_ball.makeGraphic(5,5,FlxColor.WHITE);
+		_ball = new FlxSprite(_bar.x+BAR_WIDTH/2,_bar.y-BAR_HEIGHT);
+		_ball.makeGraphic(BALL_WIDTH,BALL_HEIGHT,FlxColor.WHITE);
 
 		_walls = new FlxGroup();
 		var wallLeft:FlxSprite=new FlxSprite(0,0);
@@ -87,7 +87,9 @@ class PlayState extends FlxState
 			add(newGame);
 		}
 		else{
-
+			if(_ball.velocity.y==0&&gameStarted){
+				_ball.velocity.y=-10;
+			}
 			if(FlxG.keys.justPressed.SPACE&&!gameStarted) {
 				_ball.velocity.y-=200;
 				gameStarted=true;
@@ -111,33 +113,44 @@ class PlayState extends FlxState
 			FlxG.collide(_bar,_ball,ping);
 
 			FlxG.collide(_bricks,_ball,breakBrick);
+			var notOver:Bool=false;
+			_bricks.forEachAlive(function (brick){
+					if(brick.color!=FlxColor.GRAY){
+						notOver=true;
+						return;
+					}
+
+			});
+			if(!notOver){
+				level++;
+				FlxG.resetState();
+			}
 			if(_bricks.getFirstAlive()==null){
 				level++;
 				FlxG.resetState();
 			}
 
-			if(_ball.y>=SCREEN_HEIGHT){
+			if(_ball.y>=SCREEN_HEIGHT||_ball.x<0||_ball.x>SCREEN_WIDTH){
 				livesLeft--;
 				if(livesLeft==0){
 					gameOver=true;
 				}
-				gameStarted=false;
-				_bar.x=SCREEN_WIDTH/2-BAR_WIDTH/2;
-				_ball.velocity.x=0;
-				_ball.velocity.y=0;
-				_ball.y=_bar.y-5;
-				_ball.x=_bar.x+BAR_WIDTH/2;
+				restart();
 			}
 		}
 		super.update(elapsed);
 	}
 	function breakBrick(brick:FlxSprite,ball:FlxSprite){
-		brick.destroy();
+		if(brick.color!=FlxColor.GRAY){
+
+			brick.destroy();
+		}	
 		if(ball.isTouching(FlxObject.RIGHT)||ball.isTouching(FlxObject.LEFT)){
 			ball.velocity.x=-1*previousBallVeloX;			
 		}else if (ball.isTouching(FlxObject.UP)||ball.isTouching(FlxObject.DOWN)){
 			ball.velocity.y=-1*previousBallVeloY;
 		}	
+		
 	}
 	function bounce(_w:FlxSprite,_b:FlxSprite){
 		if(_ball.y!=1){
@@ -156,7 +169,14 @@ class PlayState extends FlxState
 			ball.velocity.x=10*(-1*diff);
 		}
 	}
-
+	function restart(){
+		gameStarted=false;
+		_bar.x=SCREEN_WIDTH/2-BAR_WIDTH/2;
+		_ball.velocity.x=0;
+		_ball.velocity.y=0;
+		_ball.y=_bar.y-BAR_HEIGHT ;
+		_ball.x=_bar.x+BAR_WIDTH/2;
+	}
 	function createMap(map:String){
 		var posX=10;
 		var posY=5;
@@ -175,6 +195,13 @@ class PlayState extends FlxState
 					brick.immovable=true;
 					_bricks.add(brick);
 					posX+=BRICK_WIDTH+1;
+				case 'X':
+					var brick = new FlxSprite(posX,posY);
+					brick.makeGraphic(BRICK_WIDTH,BRICK_HEIGHT,FlxColor.GRAY);
+					brick.immovable=true;
+					brick.color=FlxColor.GRAY;
+					_bricks.add(brick);			
+					posX+=BRICK_WIDTH+1;			
 				case ' ':
 					posX+=BRICK_WIDTH+1; 
 				case '\n':
