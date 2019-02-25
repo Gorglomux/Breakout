@@ -17,4 +17,8 @@ class Globals{
 
     public static var BRICK_WIDTH:Int=32;
     public static var BRICK_HEIGHT:Int=16;
+    
+    public static var livesLeft:Int=3;
+
+    public static var level:Int=1;
 }

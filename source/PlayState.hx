@@ -6,6 +6,7 @@ import flixel.util.FlxColor;
 import flixel.FlxG;
 import flixel.group.FlxGroup;
 import flixel.FlxObject;
+import flixel.text.FlxText;
 import Globals.*;
 class PlayState extends FlxState
 {
@@ -13,12 +14,26 @@ class PlayState extends FlxState
 	var _ball:FlxSprite;
 	var _walls:FlxGroup;
 	var _bricks:FlxGroup;
+	var gameOver:Bool=false;
+	var win:Bool=false;
+	var gameOverText:FlxText;
 	override public function create():Void
 	{
 		_bricks = new FlxGroup();
-		var content:String = sys.io.File.getContent(AssetPaths.level1);
-		createMap(content);
+		var file= "assets/data/level"+level;
+		var content:String = "";
+		if(sys.FileSystem.exists(file)){
+			content = sys.io.File.getContent(file);
+			
+			createMap(content);
 
+		}else{
+			win=true;
+			gameOver=true;
+		}
+		if(livesLeft<=0){
+			gameOver=true;
+		}
 		_bar = new FlxSprite(SCREEN_WIDTH/2-BAR_WIDTH/2,SCREEN_HEIGHT-20);
 		_bar.makeGraphic(BAR_WIDTH,BAR_HEIGHT,FlxColor.WHITE);
 		_bar.immovable=true;
@@ -53,32 +68,67 @@ class PlayState extends FlxState
 	var gameStarted=false;
 	override public function update(elapsed:Float):Void
 	{
-		if(FlxG.keys.justPressed.SPACE&&!gameStarted) {
-			_ball.velocity.y-=200;
-			gameStarted=true;
-		}
-		if(!gameStarted){
-			_ball.x=_bar.x+BAR_WIDTH/2-BALL_WIDTH/2;
-		}
-		previousBallVeloX=_ball.velocity.x;
-		previousBallVeloY=_ball.velocity.y;
-	
-		if(FlxG.keys.anyPressed([LEFT,Q])&&_bar.x>0){
-			_bar.x-=5;
-		}else if(FlxG.keys.anyPressed([RIGHT,D])&&_bar.x+Globals.BAR_WIDTH<Globals.SCREEN_WIDTH) {
-			_bar.x+=5;
-		}
-		
-
-
 		if(FlxG.keys.justPressed.R) {
+			level=1;
+			livesLeft=3;
 			FlxG.resetGame();
 		}
-		FlxG.collide(_walls,_ball,bounce);
-		FlxG.collide(_bar,_ball,ping);
+		if(gameOver){
+			gameOverText = new FlxText(SCREEN_WIDTH/2-120,SCREEN_HEIGHT/2-60,"       Game over !", 20);
+			var levelReached:FlxText;
+			if(win){
+				levelReached= new FlxText(SCREEN_WIDTH/2-120,SCREEN_HEIGHT/2-30,"You have finished the game ! \n Congratulations !!",12 ); 
+			}else{
+				levelReached= new FlxText(SCREEN_WIDTH/2-120,SCREEN_HEIGHT/2-30,"You reached level "+level+" !",12 );
+			}
+			var newGame = new FlxText(SCREEN_WIDTH/2-120,SCREEN_HEIGHT/2,"Press R to restart...",12 );
+			add(gameOverText);
+			add(levelReached);
+			add(newGame);
+		}
+		else{
 
-		FlxG.collide(_bricks,_ball,breakBrick);
+			if(FlxG.keys.justPressed.SPACE&&!gameStarted) {
+				_ball.velocity.y-=200;
+				gameStarted=true;
+			}
+			if(!gameStarted){
+				_ball.x=_bar.x+BAR_WIDTH/2-BALL_WIDTH/2;
+			}
+			previousBallVeloX=_ball.velocity.x;
+			previousBallVeloY=_ball.velocity.y;
 		
+			if(FlxG.keys.anyPressed([LEFT,Q])&&_bar.x>0){
+				_bar.x-=5;
+			}else if(FlxG.keys.anyPressed([RIGHT,D])&&_bar.x+Globals.BAR_WIDTH<Globals.SCREEN_WIDTH) {
+				_bar.x+=5;
+			}
+			
+
+
+
+			FlxG.collide(_walls,_ball,bounce);
+			FlxG.collide(_bar,_ball,ping);
+
+			FlxG.collide(_bricks,_ball,breakBrick);
+			if(_bricks.getFirstAlive()==null){
+				level++;
+				FlxG.resetState();
+			}
+
+			if(_ball.y>=SCREEN_HEIGHT){
+				livesLeft--;
+				if(livesLeft==0){
+					gameOver=true;
+				}
+				gameStarted=false;
+				_bar.x=SCREEN_WIDTH/2-BAR_WIDTH/2;
+				_ball.velocity.x=0;
+				_ball.velocity.y=0;
+				_ball.y=_bar.y-5;
+				_ball.x=_bar.x+BAR_WIDTH/2;
+			}
+		}
 		super.update(elapsed);
 	}
 	function breakBrick(brick:FlxSprite,ball:FlxSprite){
